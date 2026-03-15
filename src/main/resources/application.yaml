@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: RedisPractice
+  datasource:
+    url: jdbc:postgresql://localhost:5433/product_redis_db
+    username: postgres
+    password: 1234
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    properties:
+      hibernate:
+        format-sql: true
+        transaction:
+          jta:
+            platform: org.hibernate.service.jta.JtaService
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}

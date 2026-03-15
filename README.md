@@ -1,98 +1,136 @@
 # Redis Cache Performance Test
 
-This repository contains a simple performance experiment demonstrating the impact of Redis caching on a Spring Boot service.
+This project demonstrates different caching strategies for improving backend performance in a Spring Boot application.
 
-The goal of the test is to compare:
+The goal of the experiment is to compare three approaches:
 
-* **Database-only access (PostgreSQL)**
-* **Manual Redis cache (cache-aside pattern)**
+* **Direct database access (no cache)**
+* **Manual Redis caching implementation**
+* **Spring Cache abstraction using annotations**
 
 Load testing was performed using **k6**.
 
 ---
 
-# Architecture
-
-Backend stack:
+# Tech Stack
 
 * Spring Boot
 * PostgreSQL
 * Redis
 * Docker
-* k6 for load testing
+* k6 (load testing)
 
-Caching strategy used in the project:
+---
 
-```
-Cache Aside Pattern
-```
+# Caching Strategies Implemented
 
-Flow with cache:
+## 1. No Cache
 
-```
+The service directly queries the database for every request.
+
+```text
 Request
    ↓
-Check Redis
+Spring Boot
    ↓
-Cache hit → return value
+Hibernate
    ↓
-Cache miss → query PostgreSQL
-   ↓
-Store value in Redis
-   ↓
-Return result
+PostgreSQL
 ```
 
 ---
 
-# API Endpoints Used for Testing
+## 2. Manual Redis Cache
 
+A manual **cache-aside pattern** implementation using `RedisTemplate`.
+
+Flow:
+
+```text
+Request
+   ↓
+Check Redis
+   ↓
+Cache hit → return cached value
+Cache miss → query database
+   ↓
+Store result in Redis
+   ↓
+Return response
 ```
-GET /products/{id}?cacheMode=NONE_CACHE
-GET /products/{id}?cacheMode=MANUAL
+
+Key logic example:
+
+```java
+val objFromCache = redisTemplate.opsForValue().get(cacheKey)
+
+if (objFromCache != null) {
+    return objFromCache
+}
+
+val entityFromDb = productRepository.findById(productId)
+redisTemplate.opsForValue().set(cacheKey, entityFromDb)
 ```
 
-Modes:
+---
 
-* `NONE_CACHE` → direct database access
-* `MANUAL` → Redis cache enabled
+## 3. Spring Cache Annotations
+
+The same caching behavior implemented using Spring Cache abstraction:
+
+* `@Cacheable`
+* `@CacheEvict`
+
+Example:
+
+```java
+@Cacheable("product")
+fun getById(productId: Long): ProductEntity
+```
+
+Cache invalidation:
+
+```java
+@CacheEvict("product", key = "#id")
+fun update(id: Long, request: ProductUpdateRequest)
+```
+
+This approach significantly simplifies caching logic and removes manual Redis interaction.
 
 ---
 
 # Load Testing
 
-Load testing was performed using **k6**.
+Performance tests were executed using **k6**.
 
-Configuration example:
+Test configuration example:
 
+```javascript
+export const options = {
+    vus: 100,
+    duration: '30s',
+};
 ```
-vus: 100
-duration: 30s
-```
 
-Random product IDs are requested during the test.
-
-Test script:
-
-```
-load-test/cache-test.js
-```
+Requests randomly query product IDs through the API.
 
 ---
 
-# Results
+# Test Results
 
-Results are stored in:
+All benchmark results are stored in:
 
 ```
 load-test/results/
 ```
 
-### Without Redis Cache
+---
 
-![No Cache Result](load-test/results/IMAGE 2026-03-15 23:34:56.jpg)
+## Database Only
 
-Key metrics:
+![DB Only](load-test/results/IMAGE 2026-03-15 23:34:56.jpg)
+
+Metrics:
 
 * Average latency: **4.24 ms**
 * p95 latency: **10.62 ms**
@@ -100,15 +138,26 @@ Key metrics:
 
 ---
 
-### With Redis Cache
+## Redis Cache
 
-![Redis Cache Result](load-test/results/IMAGE 2026-03-15 23:35:02.jpg)
+Without annotations:
+![Redis Cache](load-test/results/IMAGE 2026-03-15 23:34:56.jpg)
 
-Key metrics:
+With annotations:
+![Redis Cache with annotations](load-test/results/IMAGE 2026-03-16 00:38:07.jpg)
+
+Metrics:
 
 * Average latency: **1.63 ms**
 * p95 latency: **4.24 ms**
 * Throughput: **~8431 requests/sec**
+
+---
+
+## Spring Cache (Annotation-Based Implementation)
+
+The same test was executed using the service implemented with Spring Cache annotations (`@Cacheable`, `@CacheEvict`).
+The results of this benchmark are also stored in the `load-test/results` directory.
 
 ---
 
@@ -124,10 +173,11 @@ Key metrics:
 
 * **~18x higher throughput**
 * **~2.6x lower latency**
+* significantly reduced load on PostgreSQL
 
 ---
 
-# How to Run the Test
+# Running the Project
 
 Start infrastructure:
 
@@ -135,9 +185,9 @@ Start infrastructure:
 docker compose up -d
 ```
 
-Run backend application.
+Run the Spring Boot application.
 
-Run load test:
+Execute load test:
 
 ```
 k6 run load-test/cache-test.js
@@ -147,10 +197,13 @@ k6 run load-test/cache-test.js
 
 # Conclusion
 
-Even with a simple manual caching implementation, Redis significantly improves system performance:
+The experiment shows how adding a Redis caching layer dramatically improves backend performance by:
 
-* higher request throughput
-* lower response latency
-* reduced load on the database
+* reducing database load
+* decreasing response latency
+* increasing system throughput
 
-This demonstrates why Redis is commonly used as a caching layer in high-load backend systems.
+Additionally, the project demonstrates how the same caching logic can be implemented both:
+
+* manually using Redis
+* declaratively using Spring Cache annotations

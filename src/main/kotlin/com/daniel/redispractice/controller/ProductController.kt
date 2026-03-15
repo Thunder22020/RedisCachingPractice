@@ -7,6 +7,7 @@ import com.daniel.redispractice.enum.CacheMode
 import com.daniel.redispractice.mapper.ProductDtoMapper
 import com.daniel.redispractice.service.DbProductService
 import com.daniel.redispractice.service.ManualCachingProductService
+import com.daniel.redispractice.service.SpringCachingProductService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController
 class ProductController(
     val dbProductService: DbProductService,
     val manualCachingProductService: ManualCachingProductService,
+    val springProductService: SpringCachingProductService,
     val mapper: ProductDtoMapper
 ) {
     private val log: Logger = LoggerFactory.getLogger(ProductController::class.java)
@@ -87,5 +89,6 @@ class ProductController(
     private fun resolveProductService(cacheMode: CacheMode) = when (cacheMode) {
         CacheMode.MANUAL -> manualCachingProductService
         CacheMode.NONE_CACHE -> dbProductService
+        CacheMode.SPRING -> springProductService
     }
 }

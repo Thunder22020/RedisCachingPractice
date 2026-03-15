@@ -88,6 +88,6 @@ class ManualCachingProductService(
 
     companion object {
         private const val CACHE_PREFIX = "product:"
-        private const val CACHE_TTL_MINUTES = 1L
+        private const val CACHE_TTL_MINUTES = 30L
     }
 }

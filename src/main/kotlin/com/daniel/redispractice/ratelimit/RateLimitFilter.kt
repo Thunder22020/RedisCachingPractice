@@ -27,8 +27,8 @@ class RateLimitFilter(
 
         val allowed = rateLimiter.allowRequest(
             client,
-            10,
-            Duration.ofMinutes(1)
+            50,
+            Duration.ofSeconds(20)
         )
 
         if (!allowed) {
